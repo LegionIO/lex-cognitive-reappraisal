@@ -54,9 +54,9 @@ High-intensity events (> 0.7) reduce reappraisal effectiveness by 50% (difficult
 
 ## Integration
 
-- **lex-tick**: `emotional_regulation` phase
-- **lex-emotion**: valence output feeds reappraisal input; regulated valence feeds back
-- **lex-memory**: reappraisal outcomes stored as episodic traces
+- **lex-emotion**: valence output from `evaluate_valence` feeds reappraisal input; regulated valence feeds back into emotional state
+- **lex-memory**: reappraisal outcomes can be stored as episodic traces
+- **lex-tick**: not currently in lex-cortex's PHASE_MAP — must be called manually from `action_selection` or post-emotional-evaluation hooks
 
 ## License
 

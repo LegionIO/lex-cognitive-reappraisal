@@ -81,9 +81,10 @@ REAPPRAISAL_DIFFICULTY_MULTIPLIER = 0.5   # high intensity halves effectiveness
 
 ## Integration Points
 
-- **lex-tick**: `emotional_regulation` phase (not yet wired in PHASE_MAP — future extension)
+- **lex-tick**: not currently wired in lex-cortex's PHASE_MAP — must be called manually from `action_selection` or similar phases
 - **lex-emotion**: valence output from `evaluate_valence` feeds `register_event`; regulated valence feeds back into emotional state
 - **lex-memory**: reappraisal outcomes can be stored as episodic traces
+- **lex-self-talk**: deliberation voice amplification can be modulated based on reappraisal outcomes
 
 ## Development Notes
 
