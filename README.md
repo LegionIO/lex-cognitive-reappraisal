@@ -58,6 +58,22 @@ High-intensity events (> 0.7) reduce reappraisal effectiveness by 50% (difficult
 - **lex-memory**: reappraisal outcomes can be stored as episodic traces
 - **lex-tick**: not currently in lex-cortex's PHASE_MAP — must be called manually from `action_selection` or post-emotional-evaluation hooks
 
+## Actors
+
+| Actor | Interval | Description |
+|-------|----------|-------------|
+| `AutoRegulate` | Every 300s | Scans all registered events and auto-reappraises any that are negative and have not yet received any reappraisal (`reappraisal_count.zero?`). Strategy selection follows the heuristic: negative + intense -> `:distancing`, negative only -> `:reinterpretation`, intense only -> `:temporal_distancing`, otherwise -> `:benefit_finding`. |
+
+## LLM Enhancement
+
+`Helpers::LlmEnhancer` provides optional LLM-powered reappraisal text generation when `legion-llm` is loaded and `Legion::LLM.started?` returns true. All methods rescue `StandardError` and return `nil` — callers always fall back to mechanical processing.
+
+| Method | Description |
+|--------|-------------|
+| `generate_reappraisal(event_content:, initial_appraisal:, strategy:, valence:, intensity:)` | Generates a strategy-aware, psychologically-grounded 1-2 sentence re-framing of the event using the specified strategy. Includes the original event content, current appraisal, valence, and intensity so the LLM can produce a contextually specific reappraisal. |
+
+Mechanical fallback: `reappraise_event` and `auto_reappraise_event` fall back to `"auto-reappraised via #{strategy}"` as the `new_appraisal` string when LLM is unavailable or returns `nil`.
+
 ## License
 
 MIT
