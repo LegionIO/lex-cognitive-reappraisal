@@ -3,8 +3,9 @@
 require 'legion/extensions/cognitive_reappraisal/client'
 
 RSpec.describe Legion::Extensions::CognitiveReappraisal::Runners::CognitiveReappraisal do
-  let(:engine) { Legion::Extensions::CognitiveReappraisal::Helpers::ReappraisalEngine.new }
-  let(:client) { Legion::Extensions::CognitiveReappraisal::Client.new(engine: engine) }
+  let(:engine)   { Legion::Extensions::CognitiveReappraisal::Helpers::ReappraisalEngine.new }
+  let(:client)   { Legion::Extensions::CognitiveReappraisal::Client.new(engine: engine) }
+  let(:enhancer) { Legion::Extensions::CognitiveReappraisal::Helpers::LlmEnhancer }
 
   let(:registered) do
     client.register_event(
@@ -104,6 +105,56 @@ RSpec.describe Legion::Extensions::CognitiveReappraisal::Runners::CognitiveReapp
     it 'fails gracefully for unknown event' do
       result = client.auto_reappraise_event(event_id: 'missing', engine: engine)
       expect(result[:success]).to be false
+    end
+
+    context 'when LLM is available' do
+      let(:llm_appraisal) { 'This outage reveals systemic resilience that can be strengthened.' }
+
+      before do
+        allow(enhancer).to receive(:available?).and_return(true)
+        allow(enhancer).to receive(:generate_reappraisal).and_return({ new_appraisal: llm_appraisal })
+      end
+
+      it 'uses the LLM-generated appraisal text' do
+        result = client.auto_reappraise_event(event_id: registered[:event_id], engine: engine)
+        expect(result[:success]).to be true
+        expect(engine.events[registered[:event_id]].appraisal).to eq(llm_appraisal)
+      end
+
+      it 'calls the LLM enhancer with event details' do
+        expect(enhancer).to receive(:generate_reappraisal).with(
+          hash_including(
+            event_content:     'production outage',
+            initial_appraisal: 'catastrophic failure'
+          )
+        ).and_return({ new_appraisal: llm_appraisal })
+        client.auto_reappraise_event(event_id: registered[:event_id], engine: engine)
+      end
+    end
+
+    context 'when LLM is unavailable' do
+      before do
+        allow(enhancer).to receive(:available?).and_return(false)
+      end
+
+      it 'falls back to mechanical appraisal stub' do
+        result = client.auto_reappraise_event(event_id: registered[:event_id], engine: engine)
+        expect(result[:success]).to be true
+        expect(engine.events[registered[:event_id]].appraisal).to match(/auto-reappraised via/)
+      end
+    end
+
+    context 'when LLM returns nil' do
+      before do
+        allow(enhancer).to receive(:available?).and_return(true)
+        allow(enhancer).to receive(:generate_reappraisal).and_return(nil)
+      end
+
+      it 'falls back to mechanical appraisal stub' do
+        result = client.auto_reappraise_event(event_id: registered[:event_id], engine: engine)
+        expect(result[:success]).to be true
+        expect(engine.events[registered[:event_id]].appraisal).to match(/auto-reappraised via/)
+      end
     end
   end
 

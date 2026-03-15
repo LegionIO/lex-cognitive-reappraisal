@@ -30,8 +30,9 @@ module Legion
               return { success: false, reason: :invalid_strategy, valid_strategies: Helpers::Constants::STRATEGIES }
             end
 
-            eng    = engine || reappraisal_engine
-            result = eng.reappraise(event_id: event_id, strategy: strategy, new_appraisal: new_appraisal)
+            eng = engine || reappraisal_engine
+            appraisal = llm_appraisal_for(eng.events[event_id], strategy) || new_appraisal
+            result = eng.reappraise(event_id: event_id, strategy: strategy, new_appraisal: appraisal)
 
             if result[:success]
               Legion::Logging.info "[cognitive_reappraisal] reappraised event=#{event_id[0..7]} " \
@@ -44,12 +45,17 @@ module Legion
           end
 
           def auto_reappraise_event(event_id:, engine: nil, **)
-            eng    = engine || reappraisal_engine
-            result = eng.auto_reappraise(event_id: event_id)
+            eng   = engine || reappraisal_engine
+            event = eng.events[event_id]
+            return { success: false, reason: :event_not_found } unless event
+
+            strategy  = select_strategy_for(event)
+            appraisal = llm_appraisal_for(event, strategy) || "auto-reappraised via #{strategy}"
+            result    = eng.reappraise(event_id: event_id, strategy: strategy, new_appraisal: appraisal)
 
             if result[:success]
               Legion::Logging.info "[cognitive_reappraisal] auto-reappraised event=#{event_id[0..7]} " \
-                                   "strategy=#{result[:strategy]}"
+                                   "strategy=#{strategy}"
             else
               Legion::Logging.debug "[cognitive_reappraisal] auto-reappraisal failed: #{result[:reason]}"
             end
@@ -121,6 +127,31 @@ module Legion
 
           def reappraisal_engine
             @reappraisal_engine ||= Helpers::ReappraisalEngine.new
+          end
+
+          def llm_appraisal_for(event, strategy)
+            return nil unless event && Helpers::LlmEnhancer.available?
+
+            result = Helpers::LlmEnhancer.generate_reappraisal(
+              event_content:     event.content,
+              initial_appraisal: event.appraisal,
+              strategy:          strategy,
+              valence:           event.current_valence,
+              intensity:         event.current_intensity
+            )
+            result&.fetch(:new_appraisal, nil)
+          end
+
+          def select_strategy_for(event)
+            if event.negative? && event.intense?
+              :distancing
+            elsif event.negative?
+              :reinterpretation
+            elsif event.intense?
+              :temporal_distancing
+            else
+              :benefit_finding
+            end
           end
         end
       end

@@ -4,6 +4,7 @@ require 'legion/extensions/cognitive_reappraisal/version'
 require 'legion/extensions/cognitive_reappraisal/helpers/constants'
 require 'legion/extensions/cognitive_reappraisal/helpers/emotional_event'
 require 'legion/extensions/cognitive_reappraisal/helpers/reappraisal_engine'
+require 'legion/extensions/cognitive_reappraisal/helpers/llm_enhancer'
 require 'legion/extensions/cognitive_reappraisal/runners/cognitive_reappraisal'
 
 module Legion
