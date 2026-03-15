@@ -96,6 +96,27 @@ module Legion
             { success: true, report: eng.reappraisal_report }
           end
 
+          def regulate_pending_events(engine: nil, **)
+            eng       = engine || reappraisal_engine
+            events    = eng.events.values
+            checked   = events.size
+            regulated = 0
+            event_ids = []
+
+            events.each do |event|
+              next unless event.negative? && event.reappraisal_count.zero?
+
+              result = eng.auto_reappraise(event_id: event.id)
+              next unless result[:success]
+
+              regulated += 1
+              event_ids << event.id
+            end
+
+            Legion::Logging.debug "[reappraisal] regulate pending: checked=#{checked} regulated=#{regulated}"
+            { checked: checked, regulated: regulated, event_ids: event_ids }
+          end
+
           private
 
           def reappraisal_engine

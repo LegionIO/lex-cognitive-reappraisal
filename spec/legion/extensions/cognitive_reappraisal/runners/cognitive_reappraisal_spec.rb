@@ -207,4 +207,55 @@ RSpec.describe Legion::Extensions::CognitiveReappraisal::Runners::CognitiveReapp
       expect(result[:report][:total_reappraisals]).to eq(1)
     end
   end
+
+  describe '#regulate_pending_events' do
+    it 'returns checked, regulated, and event_ids keys' do
+      result = client.regulate_pending_events(engine: engine)
+      expect(result).to include(:checked, :regulated, :event_ids)
+    end
+
+    it 'returns zero regulated when no events registered' do
+      result = client.regulate_pending_events(engine: engine)
+      expect(result[:regulated]).to eq(0)
+      expect(result[:event_ids]).to eq([])
+    end
+
+    it 'regulates negative unreappraisals events' do
+      registered
+      result = client.regulate_pending_events(engine: engine)
+      expect(result[:regulated]).to eq(1)
+      expect(result[:event_ids]).to include(registered[:event_id])
+    end
+
+    it 'skips events that have already been reappraised' do
+      registered
+      client.reappraise_event(
+        event_id:      registered[:event_id],
+        strategy:      :reinterpretation,
+        new_appraisal: 'already handled',
+        engine:        engine
+      )
+      result = client.regulate_pending_events(engine: engine)
+      expect(result[:regulated]).to eq(0)
+    end
+
+    it 'skips positive events' do
+      client.register_event(
+        content:   'great news',
+        valence:   0.8,
+        intensity: 0.3,
+        appraisal: 'wonderful',
+        engine:    engine
+      )
+      result = client.regulate_pending_events(engine: engine)
+      expect(result[:regulated]).to eq(0)
+    end
+
+    it 'returns checked equal to total event count' do
+      registered
+      client.register_event(content: 'another', valence: 0.5, intensity: 0.2, appraisal: 'fine', engine: engine)
+      result = client.regulate_pending_events(engine: engine)
+      expect(result[:checked]).to eq(2)
+    end
+  end
 end
